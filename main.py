@@ -97,14 +97,16 @@ def write_heading(file, heading, encoding):
 @click.option('--server_username', required=True, type=str,
               help='the username for the smtp_ssl server. If using gmail then use the mail you want to send from')
 @click.option('--server_password', required=True, type=str,
-              help='the password for the smtp_ssl server. Tf using gmail you need a app password: https://myaccount.google.com/apppasswords')
+              help='the password for the smtp_ssl server. '
+                   'Tf using gmail you need a app password: https://myaccount.google.com/apppasswords')
 @click.option('--smtp_ssl', default='smtp.gmail.com',
               help="The stmp ssl server to send the email with. If using google the stmp ssl server is: smtp.gmail.com")
 @click.option('--from_str', default="DR News Compressed Service",
               help="The text there shoud be used in the \"From:\" field on the mail")
 @click.option('--subject_str', default="DR News compressed", help="What the subject field on the mail should be")
 @click.option('-o', '--only_new', default=True,
-              help="If 1 then only new news are send. This is based on the last news heading there has previse been sent")
+              help="If 1 then only new news are send. "
+                   "This is based on the last news heading there has previse been sent")
 @click.option('-c', '--char_per_line', default=64, help="The number of chars per line in the news.txt file")
 @click.option('-s', '--sep_char', default="-", help="The separator used between each news")
 @click.option('-d', '--debug', is_flag=True, help="If set in debug mode the first call will save a html "
