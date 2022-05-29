@@ -1,5 +1,6 @@
 import os
 import shutil
+import re
 
 from lib.handel_email import send_mail
 
@@ -90,7 +91,9 @@ def write_heading(file, heading, encoding):
         fp.write(heading)
 
 
-# TODO: Remove (Foto: ......)
+def remove_foto(target_str):
+    res_str = re.sub(r"\(Foto.+\)", "", target_str)
+    return res_str
 
 @click.command()
 @click.option('--to_mail', required=True, type=str, help='email to send the news to')
@@ -160,6 +163,7 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
 
         body_el = news.find_next("div", {"class": body_class_name})
         body_text = body_el.text
+        body_text = remove_foto(body_text)
 
         news_to_save.append([time_text, heading_text, body_text])
 
