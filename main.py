@@ -102,7 +102,7 @@ def remove_foto(target_str):
               help='the username for the smtp_ssl server. If using gmail then use the mail you want to send from')
 @click.option('--server_password', required=True, type=str,
               help='the password for the smtp_ssl server. '
-                   'Tf using gmail you need a app password: https://myaccount.google.com/apppasswords')
+                   'If using gmail you need a app password: https://myaccount.google.com/apppasswords')
 @click.option('--smtp_ssl', default='smtp.gmail.com',
               help="The stmp ssl server to send the email with. If using google the stmp ssl server is: smtp.gmail.com")
 @click.option('--from_str', default="DR News Compressed Service",
