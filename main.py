@@ -95,6 +95,7 @@ def remove_foto(target_str):
     res_str = re.sub(r"\(Foto.+\)", "", target_str)
     return res_str
 
+
 @click.command()
 @click.option('--to_mail', required=True, type=str, help='email to send the news to')
 @click.option('--server_username', required=True, type=str,
@@ -112,11 +113,12 @@ def remove_foto(target_str):
                    "This is based on the last news heading there has previse been sent")
 @click.option('-c', '--char_per_line', default=64, help="The number of chars per line in the news.txt file")
 @click.option('-s', '--sep_char', default="-", help="The separator used between each news")
+@click.option('-m', '--send', default=True, help="If 1 the mail will be sent")
 @click.option('-d', '--debug', is_flag=True, help="If set in debug mode the first call will save a html "
                                                   "with the current news and all later calls will use this "
                                                   "html file instead of fetching new news")
 def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
-         server_username, server_password, smtp_ssl, debug):
+         server_username, server_password, smtp_ssl, send, debug):
     """Scraps https://www.dr.dk/nyheder for news, rewrite the news in size aware format and send a compressed version to the given email
     7zip can then be used to open the compressed file there contains a news.txt file
     """
@@ -200,9 +202,10 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
 
         # Send email with file
         print(f"Sending mail to {to_mail}")
-        send_mail(from_str, to_mail, server_username, server_password, subject_str,
-                  body="News from DR nyheder. Uncompress with 7zip",
-                  file_attachments=[best_file], smtp_ssl=smtp_ssl)
+        if send:
+            send_mail(from_str, to_mail, server_username, server_password, subject_str,
+                      body="News from DR nyheder. Uncompress with 7zip",
+                      file_attachments=[best_file], smtp_ssl=smtp_ssl)
 
     else:
         print("No new news was found.")
