@@ -11,6 +11,8 @@ import py7zr
 import numpy as np
 import click
 
+from datetime import datetime
+
 url = 'https://www.dr.dk/nyheder'
 news_item_class_name = "hydra-latest-news-page__short-news-item"
 time_class_name = "hydra-latest-news-page-short-news__meta"
@@ -114,15 +116,24 @@ def remove_foto(target_str):
 @click.option('-c', '--char_per_line', default=64, help="The number of chars per line in the news.txt file")
 @click.option('-s', '--sep_char', default="-", help="The separator used between each news")
 @click.option('-m', '--send', default=True, help="If 1 the mail will be sent")
+@click.option('-e', '--end_date', default="FFFFFFFF", help="The date for when to stop sending news in format YYYYMMDD. "
+                                                           "If set to FFFFFFFF no end date")
 @click.option('-d', '--debug', is_flag=True, help="If set in debug mode the first call will save a html "
                                                   "with the current news and all later calls will use this "
                                                   "html file instead of fetching new news")
 def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
-         server_username, server_password, smtp_ssl, send, debug):
+         server_username, server_password, smtp_ssl, send, end_date, debug):
     """Scraps https://www.dr.dk/nyheder for news, rewrite the news in size aware format and send a compressed version to the given email
     7zip can then be used to open the compressed file there contains a news.txt file
     """
     sep_string = sep_char * char_per_line
+
+    if end_date != "FFFFFFFF":
+        end_date_dt = datetime.strptime(end_date, '%Y%m%d')
+        current_day = datetime.now()
+        if current_day >= end_date_dt:
+            print("Current day is later than end day")
+            exit()
 
     if debug:
         print("Running in debug mode. This will not use updated new!!!")
