@@ -71,6 +71,8 @@ compres_filters = {
 
 
 def insert_newlines(s, n=64):
+    if n == -1:
+        return s
     string_list = []
     last_space = -1
     current_string = ""
@@ -160,7 +162,8 @@ def handle_body(s):
 @click.option('-o', '--only_new', default=True,
               help="If 1 then only new news are send. "
                    "This is based on the last news heading there has previse been sent")
-@click.option('-c', '--char_per_line', default=64, help="The number of chars per line in the news.txt file")
+@click.option('-c', '--char_per_line', default=-1, help="The number of chars per line in the news.txt file. "
+                                                        "If set to -1 there is no limit")
 @click.option('-s', '--sep_char', default="-", help="The separator used between each news")
 @click.option('-m', '--send', default=True, help="If 1 the mail will be sent")
 @click.option('-e', '--end_date', default="FFFFFFFF", help="The date for when to stop sending news in format YYYYMMDD. "
@@ -175,7 +178,10 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
     """Scraps https://www.dr.dk/nyheder for news, rewrite the news in size aware format and send a compressed version to the given email
     7zip can then be used to open the compressed file there contains a news.txt file
     """
-    sep_string = sep_char * char_per_line
+    sep_length = char_per_line
+    if sep_length == -1:
+        sep_length = 60
+    sep_string = sep_char * sep_length
 
     if isinstance(max_bytes, str):
         old_format = max_bytes
@@ -258,9 +264,14 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
             fp.write(f"Nyheder fra DR: {timestamp}\n{sep_string}\n")
             for i, (time, heading, body) in enumerate(news_to_save):
                 save_text = ""
-                save_text += insert_newlines(f"{time}: {heading}\n\n", char_per_line) + "\n"
+                save_text += insert_newlines(f"{time}: {heading}\n", char_per_line)
                 if body != "":
-                    save_text += "\n" + insert_newlines(body, char_per_line) + "\n"
+                    save_text += "\n"
+                    if char_per_line != -1:
+                        save_text += "\n"
+                    save_text += insert_newlines(body, char_per_line) + "\n"
+                elif char_per_line != -1:
+                    save_text += "\n"
                 save_text += f"{sep_string}\n"
                 fp.write(save_text)
 
