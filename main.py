@@ -12,11 +12,28 @@ import numpy as np
 import click
 
 from datetime import datetime
+from dateutil import tz
+
+
+def cvt_datasize(data_size, data_unit_from, data_unit_to, use_1024=True):
+    units = ['B', 'KB', 'MB', 'GB', 'TB']
+    cvt_s = 1000 if not use_1024 else 1024
+    try:
+        from_idx = units.index(data_unit_from)
+        to_idx = units.index(data_unit_to)
+    except ValueError:
+        raise ValueError(f"One of the given units {[data_unit_from, data_unit_to]} are not implemented ({units}).")
+
+    diff = from_idx - to_idx
+    cvt_diff = cvt_s ** diff
+    cvt_size = data_size * cvt_diff
+    return cvt_size
+
 
 url = 'https://www.dr.dk/nyheder'
-news_item_class_name = "hydra-latest-news-page__short-news-item"
-time_class_name = "hydra-latest-news-page-short-news__meta"
-heading_class_name = "hydra-latest-news-page-short-news__heading"
+news_item_class_name = "hydra-latest-news-page__list-item"
+time_class_name = "dre-teaser-meta-label"
+heading_class_name = "dre-title-text"
 body_class_name = "hydra-latest-news-page-short-news__body"
 file_out = "news.txt"
 encoding = "utf-8"
@@ -98,6 +115,36 @@ def remove_foto(target_str):
     return res_str
 
 
+def remove_link(s):
+    s = s.replace("/ritzau/", "")
+    s = s.replace("/Ritzau/", "")
+    s = s.replace("FacebookTwitterKopier Link", "")
+    return s
+
+
+def add_space(s):
+    c_space = ["."]
+
+    ensure_space = False
+    s_out = ""
+    for c in s:
+        if c in c_space:
+            ensure_space = True
+        elif ensure_space:
+            ensure_space = False
+            if c != " ":
+                s_out += " "
+        s_out += c
+    return s_out
+
+def handle_body(s):
+    s = remove_foto(s)
+    s = remove_link(s)
+
+    s = add_space(s)
+    return s
+
+
 @click.command()
 @click.option('--to_mail', required=True, type=str, help='email to send the news to')
 @click.option('--server_username', required=True, type=str,
@@ -118,15 +165,32 @@ def remove_foto(target_str):
 @click.option('-m', '--send', default=True, help="If 1 the mail will be sent")
 @click.option('-e', '--end_date', default="FFFFFFFF", help="The date for when to stop sending news in format YYYYMMDD. "
                                                            "If set to FFFFFFFF no end date")
+@click.option('-e', '--max_bytes', default="100KB", help="The max size of the compressed news in bytes. "
+                                                         "More than the given size the news will not be sent")
 @click.option('-d', '--debug', is_flag=True, help="If set in debug mode the first call will save a html "
                                                   "with the current news and all later calls will use this "
                                                   "html file instead of fetching new news")
 def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
-         server_username, server_password, smtp_ssl, send, end_date, debug):
+         server_username, server_password, smtp_ssl, send, end_date, max_bytes, debug):
     """Scraps https://www.dr.dk/nyheder for news, rewrite the news in size aware format and send a compressed version to the given email
     7zip can then be used to open the compressed file there contains a news.txt file
     """
     sep_string = sep_char * char_per_line
+
+    if isinstance(max_bytes, str):
+        old_format = max_bytes
+        format_size = ""
+        format_unit = ""
+        for i, c in enumerate(max_bytes):
+            if c.isnumeric() or c == ".":
+                format_size += c
+            else:
+                format_unit = max_bytes[i:]
+                format_size = float(format_size)
+                break
+        format_unit = format_unit.upper()
+        max_bytes = cvt_datasize(format_size, format_unit, "B", use_1024=False)
+        print(f"Max size is set to {max_bytes} bytes from {old_format} argument")
 
     if end_date != "FFFFFFFF":
         end_date_dt = datetime.strptime(end_date, '%Y%m%d')
@@ -163,10 +227,14 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
 
     news_list = soup.find_all("li", {"class": news_item_class_name})
     for i, news in enumerate(news_list):
-        time_el = news.find_next("div", {"class": time_class_name})
-        time_text = time_el.text
+        time_elements = news.findChildren("span", {"class": time_class_name})
+        time_text = "Unknown time"
+        for time_el in time_elements:
+            if "dre-teaser-meta-label--primary" in time_el.attrs["class"]:
+                continue
+            time_text = time_el.text
 
-        heading_el = news.find_next("div", {"class": heading_class_name})
+        heading_el = news.findChild("span", {"class": heading_class_name})
         heading_text = heading_el.text
 
         if i == 0:
@@ -174,19 +242,25 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
         if only_new and last_headline is not None and heading_text == last_headline:
             break
 
-        body_el = news.find_next("div", {"class": body_class_name})
-        body_text = body_el.text
-        body_text = remove_foto(body_text)
+        body_text = ""
+        body_el = news.findChild("div", {"class": body_class_name, "itemprop": "articleBody"})
+        if body_el is not None:
+            body_text = body_el.text
 
-        news_to_save.append([time_text, heading_text, body_text])
+        if body_text is not None:
+            body_text = handle_body(body_text)
 
+            news_to_save.append([time_text, heading_text, body_text])
     if len(news_to_save):
         print(f"New news was found. ({len(news_to_save)})")
         with codecs.open(file_out, "w", encoding) as fp:
+            timestamp = str(datetime.now(tz=tz.tzlocal()))
+            fp.write(f"Nyheder fra DR: {timestamp}\n{sep_string}\n")
             for i, (time, heading, body) in enumerate(news_to_save):
                 save_text = ""
-                save_text += insert_newlines(f"{time}: {heading}\n\n", char_per_line) + "\n\n"
-                save_text += insert_newlines(body, char_per_line) + "\n"
+                save_text += insert_newlines(f"{time}: {heading}\n\n", char_per_line) + "\n"
+                if body != "":
+                    save_text += "\n" + insert_newlines(body, char_per_line) + "\n"
                 save_text += f"{sep_string}\n"
                 fp.write(save_text)
 
@@ -208,16 +282,19 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
 
         min_size_file_idx = np.argmin(file_sizes)
         best_file = files[min_size_file_idx]
+        compresse_size = file_sizes[min_size_file_idx]
         print("The best compressing method was:", os.path.basename(best_file),
-              "with a size of ", file_sizes[min_size_file_idx])
+              "with a size of ", compresse_size, "bytes")
 
-        # Send email with file
-        print(f"Sending mail to {to_mail}")
-        if send:
+        if send and compresse_size <= max_bytes:
+            # Send email with file
+            print(f"Sending mail to {to_mail}")
             send_mail(from_str, to_mail, server_username, server_password, subject_str,
                       body="News from DR nyheder. Uncompress with 7zip",
                       file_attachments=[best_file], smtp_ssl=smtp_ssl)
-
+        elif compresse_size > max_bytes:
+            print(f"The compressed new was to big! "
+                  f"The max byte size if {max_bytes} while the file was {compresse_size}")
     else:
         print("No new news was found.")
 

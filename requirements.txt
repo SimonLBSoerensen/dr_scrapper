@@ -3,3 +3,4 @@ requests
 py7zr
 numpy
 click
+python-dateutil
