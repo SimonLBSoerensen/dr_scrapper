@@ -31,10 +31,13 @@ def cvt_datasize(data_size, data_unit_from, data_unit_to, use_1024=True):
 
 
 url = 'https://www.dr.dk/nyheder'
-news_item_class_name = "hydra-latest-news-page__list-item"
+news_item_class_name = "hydra-latest-news-page__short-news-item"
 time_class_name = "dre-teaser-meta-label"
 heading_class_name = "dre-title-text"
-body_class_name = "hydra-latest-news-page-short-news__body"
+body_class_name = [
+    {"name": "div", "attrs": {"class": "hydra-latest-news-page-short-news-article__body", "itemprop": "articleBody"}},
+    {"name": "p", "attrs": {"class": "hydra-latest-news-page-short-news-card__summary"}}
+]
 file_out = "news.txt"
 encoding = "utf-8"
 
@@ -139,6 +142,7 @@ def add_space(s):
         s_out += c
     return s_out
 
+
 def handle_body(s):
     s = remove_foto(s)
     s = remove_link(s)
@@ -228,7 +232,6 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
     last_headline = load_last_heading(last_headline_file, encoding)
 
     soup = BeautifulSoup(html, 'html.parser')
-
     news_to_save = []
 
     news_list = soup.find_all("li", {"class": news_item_class_name})
@@ -245,11 +248,15 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
 
         if i == 0:
             write_heading(last_headline_file, heading_text, encoding)
+
         if only_new and last_headline is not None and heading_text == last_headline:
             break
 
         body_text = ""
-        body_el = news.findChild("div", {"class": body_class_name, "itemprop": "articleBody"})
+        for body_class_name_sub in body_class_name:
+            body_el = news.findChild(**body_class_name_sub)
+            if body_el is not None:
+                break
         if body_el is not None:
             body_text = body_el.text
 
@@ -287,7 +294,7 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
                 pass
             else:
                 file_size = os.path.getsize(file_name)
-                print("Success:", filters_name, "with a size of", file_size)
+                print("Success:", filters_name, "with a size of", file_size, "bytes")
                 file_sizes.append(file_size)
                 files.append(file_name)
 
