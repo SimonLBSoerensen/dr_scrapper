@@ -182,6 +182,7 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
     """Scraps https://www.dr.dk/nyheder for news, rewrite the news in size aware format and send a compressed version to the given email
     7zip can then be used to open the compressed file there contains a news.txt file
     """
+    print("Script running at:", datetime.now().isoformat())
     sep_length = char_per_line
     if sep_length == -1:
         sep_length = 60
