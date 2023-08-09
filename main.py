@@ -30,6 +30,8 @@ def cvt_datasize(data_size, data_unit_from, data_unit_to, use_1024=True):
     return cvt_size
 
 
+script_folder = os.path.dirname(__file__)
+
 url = 'https://www.dr.dk/nyheder'
 news_item_class_name = "hydra-latest-news-page__short-news-item"
 time_class_name = "dre-teaser-meta-label"
@@ -38,10 +40,10 @@ body_class_name = [
     {"name": "div", "attrs": {"class": "hydra-latest-news-page-short-news-article__body", "itemprop": "articleBody"}},
     {"name": "p", "attrs": {"class": "hydra-latest-news-page-short-news-card__summary"}}
 ]
-file_out = "news.txt"
+file_out = os.path.join(script_folder, "news.txt")
 encoding = "utf-8"
 
-last_headline_file = "last.txt"
+last_headline_file = os.path.join(script_folder, "last.txt")
 
 compres_filters = {
     "LZMA2_Delta": [{'id': py7zr.FILTER_DELTA}, {'id': py7zr.FILTER_LZMA2, 'preset': py7zr.PRESET_DEFAULT}],
@@ -151,6 +153,8 @@ def handle_body(s):
     return s
 
 
+
+
 @click.command()
 @click.option('--to_mail', required=True, type=str, help='email to send the news to')
 @click.option('--server_username', required=True, type=str,
@@ -215,7 +219,7 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
     if only_new:
         print("Only new news will be used. This is based on heading of the news so a duplet of a "
               "heading will course unseen news to not be used")
-    compress_folder = "compress"
+    compress_folder = os.path.join(script_folder, "compress")
     if os.path.exists(compress_folder):
         shutil.rmtree(compress_folder)
     os.makedirs(compress_folder)
