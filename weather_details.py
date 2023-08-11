@@ -1,5 +1,3 @@
-from beautifultable import BeautifulTable
-
 import requests
 from beautifultable import BeautifulTable
 from bs4 import BeautifulSoup

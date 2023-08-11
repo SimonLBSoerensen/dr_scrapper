@@ -3,7 +3,6 @@ import sys
 sys.path.append(os.path.dirname(__file__))
 
 import shutil
-import wget
 import re
 
 from lib.handel_email import send_mail
