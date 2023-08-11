@@ -1,5 +1,9 @@
 import os
+import sys
+sys.path.append(os.path.dirname(__file__))
+
 import shutil
+import wget
 import re
 
 from lib.handel_email import send_mail
@@ -13,6 +17,8 @@ import click
 
 from datetime import datetime
 from dateutil import tz
+
+from weather_details import get_weather_detail
 
 
 def cvt_datasize(data_size, data_unit_from, data_unit_to, use_1024=True):
@@ -42,8 +48,13 @@ body_class_name = [
 ]
 file_out = os.path.join(script_folder, "news.txt")
 encoding = "utf-8"
-
 last_headline_file = os.path.join(script_folder, "last.txt")
+
+weather_file = os.path.join(script_folder, "weather.pdf")
+weather_url = "https://www.yr.no/en/print/forecast/2-2760249/Greenland/Nord.pdf"
+
+weather_details_url = "https://www.yr.no/en/details/table/2-2760249/Greenland/Nord"
+weather_details_file_out = os.path.join(script_folder, "weather_detail.txt")
 
 compres_filters = {
     "LZMA2_Delta": [{'id': py7zr.FILTER_DELTA}, {'id': py7zr.FILTER_LZMA2, 'preset': py7zr.PRESET_DEFAULT}],
@@ -63,7 +74,7 @@ compres_filters = {
     "PPMd5": [{'id': py7zr.FILTER_PPMD, 'order': 24, 'mem': 24}],
     "PPMd6": [{'id': py7zr.FILTER_PPMD, 'order': 48, 'mem': 24}],
     "PPMd7": [{'id': py7zr.FILTER_PPMD, 'order': 12, 'mem': 32}],
-    "Brolti": [{'id': py7zr.FILTER_BROTLI, 'level': 11}],
+    #"Brolti": [{'id': py7zr.FILTER_BROTLI, 'level': 11}],
     "7zAES_LZMA2_Delta": [{'id': py7zr.FILTER_DELTA}, {'id': py7zr.FILTER_LZMA2, 'preset': py7zr.PRESET_DEFAULT},
                           {'id': py7zr.FILTER_CRYPTO_AES256_SHA256}],
     "7zAES_LZMA2_BCJ": [{'id': py7zr.FILTER_X86}, {'id': py7zr.FILTER_LZMA2, 'preset': py7zr.PRESET_DEFAULT},
@@ -153,6 +164,13 @@ def handle_body(s):
     return s
 
 
+def get_weather():
+    response = requests.get(weather_url, stream=True)
+    if os.path.exists(weather_file):
+        os.remove(weather_file)
+    with open(weather_file, 'wb') as fp:
+        fp.write(response.content)
+
 
 
 @click.command()
@@ -176,7 +194,7 @@ def handle_body(s):
 @click.option('-m', '--send', default=True, help="If 1 the mail will be sent")
 @click.option('-e', '--end_date', default="FFFFFFFF", help="The date for when to stop sending news in format YYYYMMDD. "
                                                            "If set to FFFFFFFF no end date")
-@click.option('-e', '--max_bytes', default="100KB", help="The max size of the compressed news in bytes. "
+@click.option('-e', '--max_bytes', default="300KB", help="The max size of the compressed news in bytes. "
                                                          "More than the given size the news will not be sent")
 @click.option('-d', '--debug', is_flag=True, help="If set in debug mode the first call will save a html "
                                                   "with the current news and all later calls will use this "
@@ -269,6 +287,11 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
             body_text = handle_body(body_text)
 
             news_to_save.append([time_text, heading_text, body_text])
+
+    print("Downloading the weather report")
+    get_weather()
+    get_weather_detail(weather_details_url, weather_details_file_out)
+
     if len(news_to_save):
         print(f"New news was found. ({len(news_to_save)})")
         with codecs.open(file_out, "w", encoding) as fp:
@@ -294,7 +317,11 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
             file_name = os.path.join(compress_folder, filters_name + '_news.7z')
             try:
                 with py7zr.SevenZipFile(file_name, 'w', filters=filters) as z:
-                    z.write(file_out)
+                    z.write(os.path.basename(file_out))
+                    if os.path.exists(weather_file):
+                        z.write(os.path.basename(weather_file))
+                    if os.path.exists(weather_details_file_out):
+                        z.write(os.path.basename(weather_details_file_out))
             except:
                 pass
             else:
@@ -318,6 +345,7 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
         elif compresse_size > max_bytes:
             print(f"The compressed new was to big! "
                   f"The max byte size if {max_bytes} while the file was {compresse_size}")
+            os.remove(last_headline_file)
     else:
         print("No new news was found.")
 
