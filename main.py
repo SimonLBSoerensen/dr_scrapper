@@ -316,11 +316,11 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
             file_name = os.path.join(compress_folder, filters_name + '_news.7z')
             try:
                 with py7zr.SevenZipFile(file_name, 'w', filters=filters) as z:
-                    z.write(os.path.basename(file_out))
+                    z.write(file_out, os.path.basename(file_out))
                     if os.path.exists(weather_file):
-                        z.write(os.path.basename(weather_file))
+                        z.write(weather_file, os.path.basename(weather_file))
                     if os.path.exists(weather_details_file_out):
-                        z.write(os.path.basename(weather_details_file_out))
+                        z.write(weather_details_file_out, os.path.basename(weather_details_file_out))
             except Exception as e:
                 print(f"Error with {filters_name}:", e)
             else:
