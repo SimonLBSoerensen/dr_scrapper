@@ -321,8 +321,8 @@ def main(only_new, char_per_line, sep_char, from_str, subject_str, to_mail,
                         z.write(os.path.basename(weather_file))
                     if os.path.exists(weather_details_file_out):
                         z.write(os.path.basename(weather_details_file_out))
-            except:
-                pass
+            except Exception as e:
+                print(f"Error with {filters_name}:", e)
             else:
                 file_size = os.path.getsize(file_name)
                 print("Success:", filters_name, "with a size of", file_size, "bytes")
