@@ -8,7 +8,7 @@ def get_weather_detail(weather_url, file_out, maxwidth=999):
     web_request = requests.get(weather_url)
     soup = BeautifulSoup(web_request.content, 'html.parser')
 
-    weather_days = [a.text for a in soup.findAll("h2", {"class": "details-page__day-heading"})]
+    weather_days = [a.text for a in soup.findAll("h2", {"class": "header-3 heading--color-primary"})]
     weather_tables = soup.findAll("table", {"class": "fluid-table__table"})
     info_tables = []
     for wt in weather_tables:
